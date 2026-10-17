@@ -1405,7 +1405,7 @@ _AUTOSAVE_SKIP = {"/api/save", "/api/undo", "/api/connect", "/api/disconnect", "
                   "/api/calibration/mode", "/api/calibration/solo", "/api/widget/open",
                   "/api/widget/visible", "/api/agents/launch", "/api/agents/focus", "/api/agents/kill",
                   "/api/live/focus", "/api/live/answer", "/api/live/interrupt", "/api/live/close", "/api/live/resume", "/api/widget/pointer",
-                  "/api/agents/arrange", "/api/agents/new", "/api/hook", "/api/hooks"}
+                  "/api/agents/arrange", "/api/agents/new", "/api/hook", "/api/hooks", "/api/autostart"}
 
 
 @app.middleware("http")
@@ -2004,6 +2004,26 @@ def api_hooks_set(body: HooksBody):
     return {"ok": True, "installed": install.installed(), "message": msg}
 
 
+@app.get("/api/autostart")
+def api_autostart_status():
+    from agentpad import autostart
+    return {"enabled": autostart.enabled()}
+
+
+class AutostartBody(BaseModel):
+    enabled: bool
+
+
+@app.post("/api/autostart")
+def api_autostart_set(body: AutostartBody):
+    from agentpad import autostart
+    if body.enabled:
+        autostart.enable(hub.config_path)
+    else:
+        autostart.disable()
+    return {"ok": True, "enabled": autostart.enabled()}
+
+
 class DefaultProjectBody(BaseModel):
     path: Optional[str] = None
 
@@ -2138,11 +2158,37 @@ def _try_start_widget():
     )
 
 
+def _already_running() -> bool:
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8420/api/state", timeout=1):
+            return True
+    except Exception:
+        return False
+
+
 def run():
     global hub
+    import argparse
     import asyncio
 
-    config_path = Path(os.environ.get("AGENTPAD_CONFIG", str(DEFAULT_CONFIG_PATH)))
+    ap = argparse.ArgumentParser(prog="agentpad-gui")
+    ap.add_argument("--config", help="path to config.yaml (default: ./config.yaml)")
+    ap.add_argument("--background", action="store_true",
+                    help="started at login: no browser tab, output goes to ~/.agentpad/agentpad.log")
+    args = ap.parse_args()
+    if _already_running():
+        # already started (e.g. at login): just show the page
+        if not args.background:
+            webbrowser.open("http://127.0.0.1:8420")
+        return
+    if args.background:
+        log = Path.home() / ".agentpad" / "agentpad.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        sys.stdout = sys.stderr = open(log, "a", encoding="utf-8", buffering=1)
+        print(f"\n--- agentpad started {time.strftime('%Y-%m-%d %H:%M:%S')} ---")
+
+    config_path = Path(args.config or os.environ.get("AGENTPAD_CONFIG", str(DEFAULT_CONFIG_PATH)))
     hub = Hub(config_path)
 
     async def _main():
@@ -2155,7 +2201,8 @@ def run():
         server = uvicorn.Server(config)
         # an already-open tab reconnects on its own (every 1.5 s) and reloads: a new one is
         # opened only if none has shown up
-        threading.Timer(4.0, lambda: None if _page_seen.is_set() else webbrowser.open("http://127.0.0.1:8420")).start()
+        if not args.background:
+            threading.Timer(4.0, lambda: None if _page_seen.is_set() else webbrowser.open("http://127.0.0.1:8420")).start()
         threading.Timer(1.5, _try_start_widget).start()
         await server.serve()
 

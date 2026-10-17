@@ -126,7 +126,7 @@ function toast(msg) {
   toast._t = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-const NOT_DIRTY = ["/profile", "/live/focus", "/live/answer", "/states/preview", "/preview_led", "/preview_led_all", "/calibration/mode", "/calibration/solo", "/connect", "/disconnect", "/save", "/widget/open", "/widget/visible", "/agents/launch", "/agents/focus", "/agents/kill", "/hooks"];
+const NOT_DIRTY = ["/profile", "/live/focus", "/live/answer", "/states/preview", "/preview_led", "/preview_led_all", "/calibration/mode", "/calibration/solo", "/connect", "/disconnect", "/save", "/widget/open", "/widget/visible", "/agents/launch", "/agents/focus", "/agents/kill", "/hooks", "/autostart"];
 async function api(path, body) {
   if (body && !NOT_DIRTY.includes(path)) markDirty(true);
   const opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
@@ -1062,6 +1062,23 @@ $("hooksBtn").addEventListener("click", async () => {
   renderHooks();
 });
 renderHooks();
+
+// ---- start at login, in the background ----
+async function renderAutostart() {
+  let a;
+  try { a = await (await fetch("/api/autostart")).json(); } catch { return; }
+  $("autostartHint").textContent = a.enabled
+    ? "On: agentpad runs in the background as soon as you log in. Open this page any time from agentpad-gui."
+    : "Off: you start agentpad yourself.";
+  $("autostartBtn").textContent = a.enabled ? "Don't start with the computer" : "Start with the computer";
+  $("autostartBtn").dataset.on = a.enabled ? "1" : "";
+}
+$("autostartBtn").addEventListener("click", async () => {
+  const r = await api("/autostart", { enabled: !$("autostartBtn").dataset.on });
+  toast(r.enabled ? "agentpad will start when you log in" : "agentpad will no longer start on its own");
+  renderAutostart();
+});
+renderAutostart();
 
 $("autoProfile").addEventListener("change", () => api("/auto_profile", { on: $("autoProfile").checked }).catch(() => {}));
 

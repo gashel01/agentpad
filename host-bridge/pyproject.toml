@@ -29,6 +29,7 @@ agentpad = "agentpad.cli:main"
 agentpad-gui = "agentpad.webui.server:run"
 agentpad-widget = "agentpad.webui.widget:run"
 agentpad-hooks = "agentpad.hooks.install:main"
+agentpad-autostart = "agentpad.autostart:main"
 
 [tool.setuptools.packages.find]
 include = ["agentpad*"]

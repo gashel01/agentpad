@@ -32,6 +32,14 @@ is saved automatically to `config.yaml` (Ctrl+Z undoes the last one).
   open in Windows Terminal to know what they are doing.
 - **macOS** (experimental): also install the Claude Code hooks, see [`MAC.md`](MAC.md).
 
+### Start with the computer
+
+In the page, **Advanced › Start with the computer** (or `agentpad-autostart on` from
+`host-bridge/`). agentpad then starts in the background when you log in: no console, no
+browser tab, the pad lights up on its own. Running `agentpad-gui` again just opens the page.
+Its output goes to `~/.agentpad/agentpad.log`. Turn it off the same way (`agentpad-autostart off`).
+Windows uses a per-user Run entry, macOS a LaunchAgent, Linux `~/.config/autostart`.
+
 ## 3. Calibrate
 
 Click **Calibrate** at the top of the page, then **Guided calibration**: press the keys

@@ -167,7 +167,8 @@ cd firmware && pio run -t upload
 cd host-bridge && pip install -e . && agentpad-gui
 ```
 
-Then **Calibrate › Guided calibration** in the page. Details in
+Then **Calibrate › Guided calibration** in the page, and **Advanced › Start with the computer** so
+it is always there in the background. Details in
 [`docs/SETUP.md`](docs/SETUP.md), and for macOS in [`docs/MAC.md`](docs/MAC.md).
 
 <br>
