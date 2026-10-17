@@ -256,9 +256,14 @@
   // ---- LEDs: same frame as the one sent to the hardware (indexed by LED id) -----------------
   const tmp = new T.Color();
   function ledColor(c, out) {
-    // RGBW 0-255 -> linear color; the white channel adds white
+    // RGBW 0-255 -> light. An LED's PWM value is already linear light output (87/255 = 34 % of
+    // its light, clearly visible on the pad): decoding it as sRGB would crush it to ~9 %. The white
+    // channel adds white. Then a perceptual curve: the eye sees an LED at 30 % as clearly lit, the
+    // screen has to show it that way too (hue kept, only the level is lifted).
     const w = (c[3] || 0) / 255;
-    return out.setRGB(Math.min(1, c[0] / 255 + w), Math.min(1, c[1] / 255 + w), Math.min(1, c[2] / 255 + w), T.SRGBColorSpace);
+    out.setRGB(Math.min(1, c[0] / 255 + w), Math.min(1, c[1] / 255 + w), Math.min(1, c[2] / 255 + w), T.LinearSRGBColorSpace);
+    const m = Math.max(out.r, out.g, out.b);
+    return m > 0 ? out.multiplyScalar(Math.pow(m, 0.45) / m) : out;
   }
   // calibrated layout: { keys: {pos: keyId}, leds: {ledId: pos} } (see /api/state "layout")
   function setLayout(layout) {
@@ -278,10 +283,10 @@
       if (!c) continue;
       ledColor(c, tmp);
       const lum = Math.max(tmp.r, tmp.g, tmp.b);
-      const lit = Math.min(1, lum * 1.4);
+      const lit = Math.min(1, lum * 1.8);
       if (k.agent) {
-        k.capMat.emissive.copy(tmp); k.capMat.emissiveIntensity = 1.5;
-        k.capMat.color.copy(CAP_BASE).lerp(LIT_BASE, lit * 0.9);
+        k.capMat.emissive.copy(tmp); k.capMat.emissiveIntensity = 1.7;
+        k.capMat.color.copy(CAP_BASE).lerp(LIT_BASE, lit * 0.97);
       }
       if (k.swMat) {
         k.swMat.emissive.copy(tmp); k.swMat.emissiveIntensity = 1.25;
