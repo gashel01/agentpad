@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>agentpad</title>
+<link rel="stylesheet" href="style.css" />
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/RoomEnvironment.js"></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><rect x="2" y="2" width="26" height="26" rx="7" fill="none" stroke="currentColor" stroke-width="2"></rect><rect x="8" y="9" width="5" height="5" rx="1.2" fill="currentColor"></rect><rect x="17" y="9" width="5" height="5" rx="1.2" fill="currentColor"></rect><rect x="8" y="17" width="5" height="5" rx="1.2" fill="currentColor"></rect><rect x="17" y="17" width="5" height="5" rx="1.2" fill="currentColor"></rect></svg>
+      <span class="brand-name">agentpad</span>
+    </div>
+    <nav class="profile-switch space-nav" id="spaceNav" aria-label="Spaces">
+      <button class="profile-btn active" data-space="now">Now</button>
+      <button class="profile-btn" data-space="pad">Pad</button>
+    </nav>
+    <div class="top-right">
+      <button type="button" class="btn btn-ghost btn-inline" id="calibOpen">Calibrate</button>
+      <button type="button" class="btn btn-ghost btn-inline" id="undoBtn" title="Undo the last change (Ctrl+Z)" disabled>Undo</button>
+      <span class="save-state" id="saveHint" role="status" aria-live="polite"></span>
+      <div class="top-status" id="topStatus"><span class="conn-dot" id="topDot"></span><span id="topText">—</span></div>
+    </div>
+  </header>
+
+  <main class="now" id="nowView">
+    <header class="now-head">
+      <div class="now-kicker">Now</div>
+      <h1 class="now-title" id="nowTitle">—</h1>
+    </header>
+    <div class="now-grid" id="nowGrid"></div>
+  </main>
+
+  <div class="app" id="padView" hidden>
+
+    <main class="stage">
+
+      <div class="legend-tip" id="legendTip" hidden></div>
+      <div class="canvas-wrap">
+        <canvas id="pad3d" aria-label="The pad in 3D: click a key, the knob, the joystick or the halo to configure it"></canvas>
+        <div class="canvas-msg" id="padMsg">Loading model…</div>
+      </div>
+
+      <button type="button" class="view-back" id="viewBack" hidden aria-label="Back" title="Back (Esc)">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <div class="stage-title">
+        <div class="stage-kicker" id="stageKicker">Select an element</div>
+        <h1 class="stage-name" id="stageName">agentpad</h1>
+      </div>
+
+    </main>
+
+    <aside class="panel" id="panel" aria-label="Settings">
+      <div class="panel-home" id="panelEmpty">
+        <div class="home-body">
+          <section class="device-card">
+            <div class="device-head">
+              <div class="conn-dot" id="connDot"></div>
+              <div class="device-text">
+                <div class="device-title" id="connTitle">Not connected</div>
+                <div class="device-sub" id="connSub">—</div>
+              </div>
+              <button id="connectBtn" class="btn btn-ghost btn-inline">Connect</button>
+            </div>
+            <details class="port-details">
+              <summary>Change port</summary>
+              <select id="portSelect" class="select" aria-label="Serial port"></select>
+            </details>
+          </section>
+
+          <div class="pad-profile">
+            <div class="field-label">Profile</div>
+            <div class="profile-chips" id="profileSwitch" role="group" aria-label="Pad profile"></div>
+            <div class="profile-edit" id="profileEdit" hidden>
+              <input id="profileName" class="input" aria-label="Profile name" />
+              <div class="field-label">Activates automatically with</div>
+              <div class="app-chips" id="profileApps"></div>
+              <select id="profileAddApp" class="select" aria-label="Add an application"><option value="">+ Add an open application…</option></select>
+              <button type="button" class="link-btn" id="profileDelete">Delete this profile</button>
+            </div>
+            <label class="toggle auto-toggle"><input type="checkbox" id="autoProfile" /> <span>Switch profile automatically based on the foreground application</span></label>
+            <div class="default-project" id="defaultProject" hidden>
+              <div class="field-label">Default project</div>
+              <input id="defaultProjectInput" class="input" placeholder="C:\path\to\project" aria-label="Default project" spellcheck="false" />
+              <div class="dp-chips" id="defaultProjectChips"></div>
+              <div class="hint">An agent key with no session opens Claude there.</div>
+            </div>
+          </div>
+
+          <div class="tab-body">
+            <div class="field-label">Brightness <span class="field-val" id="brightnessVal">100 %</span></div>
+            <input type="range" id="brightness" class="full-range" min="5" max="100" step="5" value="100" aria-label="Pad brightness" />
+            <div class="zone-bright" id="zoneBright" hidden>
+              <label class="zb-row"><span>Agent keys</span><input type="range" min="5" max="100" step="5" value="100" data-zone="agents" aria-label="Agent keys brightness" /><span class="zb-val" data-val="agents">100 %</span></label>
+              <label class="zb-row"><span>Halo</span><input type="range" min="5" max="100" step="5" value="100" data-zone="halo" aria-label="Halo brightness" /><span class="zb-val" data-val="halo">100 %</span></label>
+            </div>
+
+            <div id="lightStates" hidden>
+              <div class="field-label section">Ambiance</div>
+              <div class="profile-chips" id="ambianceChips" role="group" aria-label="Lighting ambiance">
+                <button type="button" class="profile-chip" data-amb="defaut">Default</button>
+                <button type="button" class="profile-chip" data-amb="calme">Calm</button>
+                <button type="button" class="profile-chip" data-amb="vif">Vivid</button>
+                <button type="button" class="profile-chip" data-amb="nuit">Night</button>
+                <span class="profile-chip perso-chip" id="ambPerso" hidden>Custom</span>
+              </div>
+              <div class="field-label section states-head"><span>Agent states</span><span class="states-cols"><span>key</span><span>halo</span></span></div>
+              <div class="state-list" id="stateList" role="list"></div>
+              <div class="halo-line">
+                <span class="field-label">Halo</span>
+                <div class="profile-switch compact" id="haloMode" role="group" aria-label="Halo behavior">
+                  <button class="profile-btn" data-halo="agents" title="The halo follows the sessions' state">States</button>
+                  <button class="profile-btn" data-halo="fixed" title="The halo keeps a solid color">Solid</button>
+                </div>
+                <button type="button" class="state-swatch swatch-btn" id="haloFixedColor" title="Solid halo color" aria-label="Solid halo color" hidden></button>
+              </div>
+              <button class="link-btn" id="statesResetAll">Restore all defaults</button>
+            </div>
+
+            <div id="baseColors">
+              <div class="field-label section">Base colors</div>
+              <div class="global-color-row">
+                <button type="button" class="global-color" id="globalDefault" data-which="default">
+                  <span class="global-color-swatch"></span>
+                  <span class="global-color-name">Keys</span>
+                </button>
+                <button type="button" class="global-color" id="globalRing" data-which="ring">
+                  <span class="global-color-swatch"></span>
+                  <span class="global-color-name">Halo</span>
+                </button>
+              </div>
+            </div>
+
+          <div id="lightGeneric">
+          <div class="field-label section">Animation</div>
+          <div class="anim-grid" id="animPicker" role="radiogroup" aria-label="Animation">
+            <button type="button" class="anim-opt" data-anim="none"><span class="anim-ico anim-none"></span>Solid</button>
+            <button type="button" class="anim-opt" data-anim="breathe"><span class="anim-ico anim-breathe"></span>Breathe</button>
+            <button type="button" class="anim-opt" data-anim="wave"><span class="anim-ico anim-wave"></span>Wave</button>
+            <button type="button" class="anim-opt" data-anim="pulse"><span class="anim-ico anim-pulse"></span>Pulse</button>
+            <button type="button" class="anim-opt" data-anim="rainbow"><span class="anim-ico anim-rainbow"></span>Rainbow</button>
+          </div>
+          <select id="animName" class="select visually-hidden" tabindex="-1" aria-hidden="true">
+            <option value="none">None</option>
+            <option value="breathe">Breathing</option>
+            <option value="wave">Wave</option>
+            <option value="rainbow">Rainbow</option>
+            <option value="pulse">Pulse</option>
+          </select>
+          <div id="animParams" class="anim-params">
+            <input type="color" id="animColor" class="color-swatch small" value="#5b8cff" aria-label="Animation color" />
+            <label class="range-label">Speed
+              <input type="range" id="animSpeed" min="0.2" max="3" step="0.1" value="1" />
+            </label>
+          </div>
+          <div class="field-label">Zone</div>
+          <div class="profile-switch compact" id="animZone" role="group" aria-label="Animation zone">
+            <button class="profile-btn active" data-zone="all">All</button>
+            <button class="profile-btn" data-zone="keys">Keys</button>
+            <button class="profile-btn" data-zone="ring">Halo</button>
+          </div>
+          </div>
+
+            <details class="more" id="moreDetails">
+              <summary>Advanced</summary>
+              <div class="more-actions">
+                <button id="testAllBtn" class="btn btn-ghost btn-sm">Test LEDs</button>
+                <button id="widgetOpenBtn" class="btn btn-ghost btn-sm">Restart the widget</button>
+              </div>
+              <div class="hooks-row">
+                <div class="field-label">Claude Code hooks</div>
+                <div class="hint" id="hooksHint">…</div>
+                <button id="hooksBtn" class="btn btn-ghost btn-sm" type="button">…</button>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <div class="calib" id="calibPanel" hidden>
+        <header class="panel-head">
+          <div class="panel-kicker">Calibration</div>
+          <div class="panel-title">Pad setup</div>
+          <div class="panel-meta"><span class="panel-sub">Key presses trigger no action during calibration</span></div>
+        </header>
+        <div class="guide-bar">
+          <button type="button" class="btn btn-white" id="guideStart">Guided calibration</button>
+          <div class="guide-progress" id="guideProgress" hidden></div>
+          <div class="hint" id="guideHint">Keys, LEDs, then joystick, in sequence. Or just one part with the tabs below.</div>
+        </div>
+        <div class="calib-steps">
+          <div class="seg" role="tablist" aria-label="Calibration steps">
+            <button type="button" class="seg-btn" data-step="keys" role="tab">Keys</button>
+            <button type="button" class="seg-btn" data-step="leds" role="tab">LEDs</button>
+            <button type="button" class="seg-btn active" data-step="joy" role="tab">Joystick</button>
+          </div>
+        </div>
+
+        <div class="panel-scroll">
+          <section class="block" data-calib="joy">
+            <div class="calib-instr joy-instr" id="joyInstr">Run “Set up automatically” and follow the instructions, or adjust by hand below.</div>
+            <button type="button" class="btn btn-ghost btn-sm" id="joyAutoBtn">Set up automatically</button>
+            <div class="joy-plot-wrap">
+              <svg class="joy-plot" id="joyPlot" viewBox="0 0 4096 4096" role="img" aria-label="Raw joystick position">
+                <rect x="0" y="0" width="4096" height="4096" rx="300" class="jp-bg"></rect>
+                <rect id="jpRange" x="0" y="0" width="0" height="0" class="jp-range"></rect>
+                <circle id="jpDead" cx="2048" cy="2048" r="650" class="jp-dead"></circle>
+                <line id="jpCx" x1="2048" y1="0" x2="2048" y2="4096" class="jp-axis"></line>
+                <line id="jpCy" x1="0" y1="2048" x2="4096" y2="2048" class="jp-axis"></line>
+                <circle id="jpDot" cx="2048" cy="2048" r="130" class="jp-dot"></circle>
+              </svg>
+              <div class="joy-dir" id="joyDir">—</div>
+            </div>
+            <div class="readouts">
+              <div><span class="ro-label">Raw</span><span class="ro-val" id="joyRaw">—</span></div>
+              <div><span class="ro-label">Center</span><span class="ro-val" id="joyCenter">auto</span></div>
+              <div><span class="ro-label">Range</span><span class="ro-val" id="joyAmp">—</span></div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="joySetCenter">Set center — release the stick</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="joyMeasure">Measure range — make circles for 5 s</button>
+            <div class="field-label section">Dead zone <span id="joyDeadVal">650</span></div>
+            <input type="range" id="joyDead" min="100" max="1600" step="10" value="650" class="full-range" />
+            <div class="toggles">
+              <label class="toggle"><input type="checkbox" id="joyInvX" /> <span>Invert X</span></label>
+              <label class="toggle"><input type="checkbox" id="joyInvY" /> <span>Invert Y</span></label>
+            </div>
+            <div class="hint">Push the stick up: the displayed direction should be “North”. If not, invert that axis.</div>
+          </section>
+
+          <section class="block" data-calib="keys" hidden>
+            <div class="calib-instr" id="keysInstr">The pad will light up each key position in turn: press the matching physical key.</div>
+            <div class="mini-grid" id="keysGrid"></div>
+            <div class="calib-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="keysStart">Start</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="keysSkip" disabled>Skip this key</button>
+            </div>
+          </section>
+
+          <section class="block" data-calib="leds" hidden>
+            <div class="calib-instr" id="ledsInstr">The pad will light its LEDs one by one: each time, click where the light appears, on a key or a halo point.</div>
+            <div class="mini-grid" id="ledsGrid"></div>
+            <div class="halo-row" id="ledsHalo"></div>
+            <div class="calib-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="ledsStart">Start</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="ledsSkip" disabled>Nothing lights up</button>
+            </div>
+          </section>
+        </div>
+
+        <footer class="panel-foot">
+          <button type="button" id="calibClose" class="btn btn-ghost btn-inline">Close</button>
+          <button type="button" id="calibSave" class="btn btn-white">Apply this setting</button>
+        </footer>
+      </div>
+
+      <div class="panel-content" id="panelContent" hidden>
+        <header class="panel-head">
+          <div class="panel-kicker" id="panelKicker">Element</div>
+          <div class="panel-title" id="panelTitle">—</div>
+          <div class="panel-meta">
+            <span class="chip" id="panelChip" hidden></span>
+            <span class="panel-sub" id="panelSub">—</span>
+          </div>
+        </header>
+
+        <div class="panel-scroll">
+          <section class="block" id="bindingSection">
+            <div class="block-title">Action</div>
+            <div class="seg" id="actionSeg" role="radiogroup" aria-label="Action type">
+              <button type="button" class="seg-btn" data-action="">None</button>
+              <button type="button" class="seg-btn" data-action="combo">Keyboard</button>
+              <button type="button" class="seg-btn" data-action="text">Text</button>
+              <button type="button" class="seg-btn" data-action="macro">Macro</button>
+            </div>
+            <select id="actionType" class="select visually-hidden" tabindex="-1" aria-hidden="true">
+              <option value="">— none —</option>
+              <option value="combo">Keyboard combo</option>
+              <option value="text">Text</option>
+              <option value="macro">Macro (sequence)</option>
+            </select>
+
+            <div id="simpleValueSection">
+              <div class="field-label" id="valueLabel">Value</div>
+              <input id="actionValue" class="input" placeholder="e.g. ctrl+shift+p" aria-label="Action value" />
+              <div class="kbd-preview" id="kbdPreview" aria-hidden="true"></div>
+              <div class="hint" id="actionHint"></div>
+            </div>
+
+            <div id="agentActionSection" hidden>
+              <select id="agentActionSlot" class="select visually-hidden" tabindex="-1" aria-hidden="true"></select>
+            </div>
+
+            <div id="macroSection" hidden>
+              <div class="field-label">Steps</div>
+              <div id="macroSteps"></div>
+              <button id="macroAddStep" type="button" class="btn btn-ghost btn-sm">+ Step</button>
+              <div class="hint">“Command” runs a program on this PC, as if you typed it in a terminal: only put trusted commands there.</div>
+            </div>
+          </section>
+
+          <section class="block" id="roleSection" hidden>
+            <div class="block-title">Action</div>
+            <div class="role-grid" id="roleGrid" role="radiogroup" aria-label="Key action"></div>
+            <input id="roleCommand" class="input" placeholder="e.g. /review" aria-label="Command to type" hidden />
+            <div class="color-default" id="roleDefaultRow">
+              <span class="state-default-label">Default</span>
+              <span></span>
+              <span class="state-default-text" id="roleDefaultText"></span>
+              <button type="button" id="roleReset" class="btn btn-ghost btn-sm">Restore</button>
+            </div>
+          </section>
+
+          <section class="block" id="reservedSection" hidden>
+            <div class="block-title">Action</div>
+            <div class="reserved" id="reservedText"></div>
+          </section>
+
+          <section class="block" id="knobSection" hidden>
+            <div class="knob-group">
+              <div class="block-title">Rotation</div>
+              <div class="role-grid" id="knobRot"></div>
+              <div class="knob-default"><span class="state-default-label">Default</span><span class="state-default-text" id="knobRotDef"></span><button type="button" class="link-btn" data-knob-reset="rot">Restore</button></div>
+            </div>
+            <div class="knob-group">
+              <div class="block-title">Click</div>
+              <div class="role-grid" id="knobPress"></div>
+              <div class="knob-default"><span class="state-default-label">Default</span><span class="state-default-text" id="knobPressDef"></span><button type="button" class="link-btn" data-knob-reset="press">Restore</button></div>
+            </div>
+            <div class="knob-group">
+              <div class="block-title">Double-click</div>
+              <div class="role-grid" id="knobDouble"></div>
+              <div class="knob-default"><span class="state-default-label">Default</span><span class="state-default-text" id="knobDoubleDef"></span><button type="button" class="link-btn" data-knob-reset="double">Restore</button></div>
+            </div>
+          </section>
+
+          <section class="block" id="encSection" hidden>
+            <div class="block-title">Encoder</div>
+            <div class="enc-row"><span class="enc-ico" aria-hidden="true">↻</span>
+              <label class="enc-field">Clockwise<input id="encCw" class="input" placeholder="e.g. page_down" /></label></div>
+            <div class="enc-row"><span class="enc-ico" aria-hidden="true">↺</span>
+              <label class="enc-field">Counter-clockwise<input id="encCcw" class="input" placeholder="e.g. page_up" /></label></div>
+            <div class="enc-row" hidden><span class="enc-ico" aria-hidden="true">●</span>
+              <label class="enc-field">Click<input id="encPress" class="input" placeholder="e.g. enter" /></label></div>
+            <div class="hint">Click: hides or shows the session windows again (reserved).</div>
+          </section>
+
+          <section class="block" id="keyStateSection" hidden>
+            <div class="block-title">Action</div>
+            <div class="reserved">Shows or hides the window of this key's session.</div>
+            <button type="button" class="btn btn-ghost btn-sm" id="keyFocusBtn" hidden>Show window now</button>
+            <div class="block-title">This key's light</div>
+            <div class="state-list" id="keyStateList" role="list"></div>
+            <div class="hint">The other states are shared by all keys.</div>
+          </section>
+
+          <section class="block" id="stateSection" hidden>
+            <div class="profile-switch compact state-group" id="stateGroup" role="group" aria-label="Part being set">
+              <button class="profile-btn" data-group="keys">Keys</button>
+              <button class="profile-btn" data-group="halo">Halo</button>
+            </div>
+            <div class="hint" id="stateGroupHint" hidden></div>
+            <div class="block-title">Animation</div>
+            <div class="anim-grid" id="stateAnim" role="radiogroup" aria-label="State animation">
+              <button type="button" class="anim-opt" data-anim="solid"><span class="anim-ico anim-none"></span>Solid</button>
+              <button type="button" class="anim-opt" data-anim="breathe"><span class="anim-ico anim-breathe"></span>Breathe</button>
+              <button type="button" class="anim-opt" data-anim="blink"><span class="anim-ico anim-pulse"></span>Blink</button>
+            </div>
+            <label class="range-label state-speed">Speed
+              <input type="range" id="stateSpeed" min="0.2" max="3" step="0.1" value="1" />
+            </label>
+            <div class="state-default">
+              <span class="state-default-label" id="stateDefaultLabel">Default</span>
+              <span class="state-swatch" id="stateDefaultSwatch"></span>
+              <span class="state-default-text" id="stateDefaultText"></span>
+              <button type="button" id="stateReset" class="btn btn-ghost btn-sm">Restore</button>
+            </div>
+          </section>
+
+          <section class="block" id="colorSection">
+            <div class="block-title">Light</div>
+            <div class="color-head">
+              <input type="color" id="colorPicker" class="color-swatch" value="#141414" aria-label="Color" />
+              <div class="presets" id="colorPresets" role="group" aria-label="Quick colors">
+                <button type="button" class="preset" data-c="0,60,255,0" style="background:#123cff" aria-label="Blue (thinking)"></button>
+                <button type="button" class="preset" data-c="255,150,0,0" style="background:#ff9600" aria-label="Orange (tool running)"></button>
+                <button type="button" class="preset" data-c="0,200,40,0" style="background:#00c828" aria-label="Green (finished)"></button>
+                <button type="button" class="preset" data-c="255,0,0,0" style="background:#ff1a1a" aria-label="Red (attention)"></button>
+                <button type="button" class="preset" data-c="0,0,0,180" style="background:#f2f2ee" aria-label="White"></button>
+                <button type="button" class="preset preset-off" data-c="0,0,0,0" aria-label="Off"></button>
+              </div>
+            </div>
+            <details class="advanced">
+              <summary>Advanced · RGBW channels</summary>
+              <div class="color-channels">
+                <label>R <input type="range" id="chR" min="0" max="255" value="0" class="ch-r" /> <span id="chRVal">0</span></label>
+                <label>G <input type="range" id="chG" min="0" max="255" value="0" class="ch-g" /> <span id="chGVal">0</span></label>
+                <label>B <input type="range" id="chB" min="0" max="255" value="0" class="ch-b" /> <span id="chBVal">0</span></label>
+                <label>W <input type="range" id="chW" min="0" max="255" value="0" class="ch-w" /> <span id="chWVal">0</span></label>
+              </div>
+            </details>
+            <label class="zb-row key-bright" id="keyBrightRow" hidden><span>Brightness</span><input type="range" id="keyBright" min="5" max="100" step="5" value="100" aria-label="This key's brightness" /><span class="zb-val" id="keyBrightVal">100 %</span></label>
+            <div class="color-default" id="colorDefaultRow" hidden>
+              <span class="state-default-label">Default</span>
+              <span class="state-swatch" id="colorDefaultSwatch"></span>
+              <span class="state-default-text" id="colorDefaultText"></span>
+              <button type="button" id="colorReset" class="btn btn-ghost btn-sm">Restore</button>
+            </div>
+            <div class="hint">The 3D pad updates live as you choose.</div>
+          </section>
+        </div>
+
+        <footer class="panel-foot">
+          <button id="previewBtn" class="btn btn-ghost btn-inline">Preview</button>
+          <button id="applyBtn" class="btn btn-white">Apply</button>
+        </footer>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="pad3d.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

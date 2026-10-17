@@ -1,0 +1,52 @@
+# agentpad -- example configuration.
+#
+# You normally don't need to write anything here: the software (agentpad-gui) creates config.yaml and
+# saves it automatically on every setting changed in the page (colors, profiles, calibration,
+# default project...). This file only shows the format, for those who prefer editing by hand.
+
+num_leds: 24            # 12 keys + 12 halo LEDs (3 per side), see hardware/PINOUT.md
+power_budget_ma: 700    # above this, all LEDs dim together (same hue, less bright)
+
+# Folder where an empty agent key opens a new Claude Code session.
+default_project: "~/projects/my-app"
+
+# macOS: terminal where new sessions open (Terminal or iTerm2).
+terminal_app: Terminal
+
+# Named sessions, launchable from the radial menu ("Launch"). Claude Code sessions
+# that are already open are detected automatically: no need to declare them here.
+agents:
+  "0": {name: "my-app", cwd: "~/projects/my-app", command: "claude"}
+
+# ---- Agents profile ---------------------------------------------------------------------------
+# The 8 top keys follow your sessions; the bottom row is Bolt (Shift+Tab),
+# Confirm, Cancel and Mic. Here, only what you want to change.
+claude_code:
+  joystick: {deadzone: 650, invert_x: false, invert_y: false}
+
+# ---- Macro profiles ---------------------------------------------------------------------------
+# A profile = a name + the applications that switch it on automatically.
+profiles:
+  macropad: {name: "General", apps: []}
+
+macropad:
+  colors:
+    default: [20, 20, 20, 0]       # R, G, B, White (0-255)
+    ring: [10, 10, 16, 0]
+  keys:
+    "2": {action: combo, value: "ctrl+shift+p"}
+    "5": {action: text, value: "git status\n"}
+    "8":                           # macro: key / text / wait / exec steps
+      action: macro
+      value:
+        - {type: key, value: "ctrl+s"}
+        - {type: wait, value: 200}
+        - {type: exec, value: "echo saved"}
+    "200": {action: combo, value: "up"}      # joystick up / right / down / left
+    "202": {action: combo, value: "right"}
+    "204": {action: combo, value: "down"}
+    "206": {action: combo, value: "left"}
+  encoders:
+    "0":
+      cw: {action: combo, value: "page_down"}
+      ccw: {action: combo, value: "page_up"}

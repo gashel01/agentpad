@@ -1,0 +1,36 @@
+# ---- tooling ----
+.pio/
+.pioenvs/
+.vscode/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# ---- personal settings and state (created by the software) ----
+host-bridge/config.yaml
+host-bridge/config.yaml.*
+host-bridge/.agentpad_state.json
+host-bridge/.design_vision/
+firmware/monitor_out.txt
+
+# ---- case: only the final (v2) models are published ----
+# working Blender files (all versions, backups included)
+hardware/case/*.blend
+hardware/case/*.blend1
+# v1 and early v2 exports (at the root of hardware/case)
+hardware/case/*.stl
+hardware/case/*.png
+hardware/case/*.py
+hardware/case/rendus/
+# replaced or in-test versions
+hardware/case/v2_bloc_plaque/08_knob_avant_axe.stl
+hardware/case/v2_bloc_plaque/*.3mf
+hardware/case/v2_fond/10b_*
+hardware/case/v2_fond/12_*
+hardware/case/v2_keycaps/_ancien_*/
+hardware/case/v2_diffuseur/
