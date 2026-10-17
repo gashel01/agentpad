@@ -131,6 +131,7 @@ class AgentSessionManager:
     # running Claude Code background job (including this one itself)
     # spawns several of these, never a real session.
     _INTERNAL_MARKERS = ("--bg-pty-host", "daemon", "--spawned-by", "--reply-on-resume")
+    _HEADLESS_ARGS = ("-p", "--print")   # non-interactive runs (scripts, other apps): not a session
 
     @staticmethod
     def _own_lineage() -> set[int]:
@@ -227,13 +228,15 @@ class AgentSessionManager:
                 cmd_text = " ".join(cmdline).lower()
                 if any(marker in cmd_text for marker in self._INTERNAL_MARKERS):
                     continue
+                if any(arg in self._HEADLESS_ARGS for arg in cmdline[1:]):
+                    continue  # claude -p: driven by another program (no terminal, nothing to show)
                 if self._is_own_session(pid, own_session_id):
                     continue
                 cwd = info.get("cwd") or ""
                 slot_id = f"auto-{pid}"
                 folder = os.path.basename(cwd.rstrip("\\/")) or cwd or f"pid {pid}"
                 slot = AgentSlot(slot_id, name=self._tab_title(pid) or folder, cwd=cwd, command="claude", auto=True)
-                slot.proc = None  # pas un process qu'on possede -- pas de .poll()/.terminate()
+                slot.proc = None  # not a process we own -- no .poll()/.terminate()
                 slot.last_status = "running"
                 found[slot_id] = (slot, pid)
             except (psutil.NoSuchProcess, psutil.AccessDenied, KeyError):

@@ -36,7 +36,8 @@ is saved automatically to `config.yaml` (Ctrl+Z undoes the last one).
 
 In the page, **Advanced › Start with the computer** (or `agentpad-autostart on` from
 `host-bridge/`). agentpad then starts in the background when you log in: no console, no
-browser tab, the pad lights up on its own. Running `agentpad-gui` again just opens the page.
+browser tab, the pad lights up on its own. Its icon in the notification area opens the page
+(right-click › Quit agentpad to stop it). Running `agentpad-gui` again also just opens the page.
 Its output goes to `~/.agentpad/agentpad.log`. Turn it off the same way (`agentpad-autostart off`).
 Windows uses a per-user Run entry, macOS a LaunchAgent, Linux `~/.config/autostart`.
 

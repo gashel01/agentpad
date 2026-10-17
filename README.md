@@ -187,7 +187,7 @@ docs/            setup, serial protocol, macOS
 ## STATUS
 
 Personal prototype, used daily on Windows. macOS support is written but not yet tried on a real
-Mac. The halo diffuser is being tested. Tests run without the pad: `cd host-bridge && pytest`.
+Mac. Tests run without the pad: `cd host-bridge && pytest`.
 
 <br>
 

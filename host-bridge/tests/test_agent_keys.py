@@ -61,3 +61,11 @@ def test_more_sessions_than_keys():
     hub._assign_keys(live)
     keys = [s["agent_key"] for s in live]
     assert keys[:8] == AGENT_KEY_SLOTS and keys[8:] == [None, None]
+
+
+def test_headless_claude_runs_are_not_sessions():
+    from agentpad.agent_sessions import AgentSessionManager
+    headless = ["claude.exe", "-p", "--output-format", "stream-json"]
+    interactive = ["claude.exe", "--model", "sonnet"]
+    assert any(a in AgentSessionManager._HEADLESS_ARGS for a in headless[1:])
+    assert not any(a in AgentSessionManager._HEADLESS_ARGS for a in interactive[1:])

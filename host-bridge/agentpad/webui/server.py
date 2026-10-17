@@ -1405,7 +1405,7 @@ _AUTOSAVE_SKIP = {"/api/save", "/api/undo", "/api/connect", "/api/disconnect", "
                   "/api/calibration/mode", "/api/calibration/solo", "/api/widget/open",
                   "/api/widget/visible", "/api/agents/launch", "/api/agents/focus", "/api/agents/kill",
                   "/api/live/focus", "/api/live/answer", "/api/live/interrupt", "/api/live/close", "/api/live/resume", "/api/widget/pointer",
-                  "/api/agents/arrange", "/api/agents/new", "/api/hook", "/api/hooks", "/api/autostart"}
+                  "/api/agents/arrange", "/api/agents/new", "/api/hook", "/api/hooks", "/api/autostart", "/api/quit"}
 
 
 @app.middleware("http")
@@ -2124,6 +2124,46 @@ class NoCacheStaticFiles(StaticFiles):
 app.mount("/", NoCacheStaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 
 
+def _kill_stray(module: str):
+    try:
+        import psutil
+    except ImportError:
+        return
+    for p in psutil.process_iter(["pid", "cmdline"]):
+        try:
+            if module in " ".join(p.info.get("cmdline") or []):
+                p.kill()
+        except Exception:
+            pass
+
+
+def _try_start_tray():
+    """Notification-area icon (open the page, quit). Silent if pystray is missing."""
+    try:
+        import pystray  # noqa: F401
+    except ImportError:
+        return
+    _kill_stray("agentpad.tray")
+    subprocess.Popen([sys.executable, "-m", "agentpad.tray"],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+@app.post("/api/quit")
+def api_quit():
+    """Quit from the tray icon: LEDs off, radial menu closed, then the server exits."""
+    def _bye():
+        try:
+            if hub.link:
+                hub.link.send({"t": "led_all", "r": 0, "g": 0, "b": 0, "w": 0})
+            hub.disconnect()
+        except Exception:
+            pass
+        _kill_stray("agentpad.webui.widget")
+        os._exit(0)
+    threading.Timer(0.3, _bye).start()
+    return {"ok": True}
+
+
 def _kill_stray_widgets():
     """A server restart (frequent in dev) used to relaunch the widget
     without ever closing a previous instance -- several floating
@@ -2204,6 +2244,7 @@ def run():
         if not args.background:
             threading.Timer(4.0, lambda: None if _page_seen.is_set() else webbrowser.open("http://127.0.0.1:8420")).start()
         threading.Timer(1.5, _try_start_widget).start()
+        threading.Timer(1.0, _try_start_tray).start()
         await server.serve()
 
     asyncio.run(_main())

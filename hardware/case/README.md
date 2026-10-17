@@ -24,13 +24,16 @@ two lips.
 | `v2_keycaps/10_agent_lisse_x8.stl` | Agent keys, plain (print 8) | 8 | Translucent white PLA |
 | `v2_keycaps/01..08_agent_*.stl` | Variant: numbered agent keys | 8 | Translucent white PLA |
 | `v2_keycaps/20..23_*.stl` | Bottom row: Bolt, Confirm, Cancel, Mic | 4 | Light grey PETG (slightly translucent) |
+| `v2_diffuseur/14_diffuseur_anneau.stl` | Halo diffuser, one piece | 1 | Translucent white |
 
 The 8 agent keys are in translucent white PLA: they take on the color of their
 session's LED. Their tops are 0.6 mm thick (any thinner and the bridge does not print).
 
 The keys can be regenerated with `v2_keycaps/keycaps_generateur.py` (run it in Blender).
 
-## In testing
+## Halo diffuser
 
-A band diffuser, clipped from the outside into the halo groove, is currently
-being printed. It will be added here once validated.
+A single band that wraps the whole case, from the top of the plate down to the bottom
+lip, and clips in from the outside. It is open in one place only, at the back along the
+cable: the two ends overlap there, so no gap shows once it is mounted. The plastic is
+thin enough to flex open around the case.
