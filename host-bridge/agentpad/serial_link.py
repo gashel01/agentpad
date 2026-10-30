@@ -7,20 +7,28 @@ import serial
 from serial.tools import list_ports
 
 
+def is_bluetooth(p) -> bool:
+    """Bluetooth serial links (paired phones, headsets...): never the pad, and opening one can hang."""
+    return "bluetooth" in (p.description or "").lower() or "BTHENUM" in (p.hwid or "").upper() \
+        or "bluetooth" in (p.device or "").lower()
+
+
 def find_port() -> Optional[str]:
-    candidates = []
+    """The pad's USB serial port, or None (the caller retries later). Never falls back to just any
+    port: at login the USB port can show up after the Bluetooth ones, and picking one of those left
+    the software "connected" to something that is not the pad."""
+    known, usb = [], []
     for p in list_ports.comports():
         desc = (p.description or "").lower()
         dev = p.device or ""
-        if dev.startswith("/dev/tty.") or "bluetooth" in dev.lower():
+        if dev.startswith("/dev/tty.") or is_bluetooth(p):
             continue                      # macOS: the same port also exists as /dev/cu.*, which is the one to open
         if any(k in desc for k in ("cp210", "ch340", "ch9102", "usb-serial", "usb serial", "silicon labs", "uart")) \
                 or any(k in dev for k in ("usbserial", "usbmodem", "wchusbserial", "SLAB_USBtoUART", "ttyUSB", "ttyACM")):
-            candidates.append(p.device)
-    if candidates:
-        return candidates[0]
-    ports = list(list_ports.comports())
-    return ports[0].device if ports else None
+            known.append(p.device)
+        elif p.vid is not None:           # some other USB serial chip
+            usb.append(p.device)
+    return (known + usb or [None])[0]
 
 
 class SerialLink:
@@ -47,6 +55,7 @@ class SerialLink:
         time.sleep(2.0)  # gives the ESP32's auto-reset time to happen on plug-in
         self._reader_thread = threading.Thread(target=self._read_loop, daemon=True)
         self._reader_thread.start()
+        self.send({"t": "ping"})        # the firmware answers with "hello": proof it is really the pad
 
     def close(self):
         self._stop.set()

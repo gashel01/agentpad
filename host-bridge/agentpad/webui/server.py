@@ -149,6 +149,8 @@ class Hub:
         self.profile = self._load_last_profile()
         self.link: Optional[SerialLink] = None
         self.device_info: dict = {}
+        self._link_auto = False        # connected by the reconnection loop (not picked by hand)
+        self._link_since = 0.0
         self.dispatcher: Optional[ActionDispatcher] = None
         self.joystick: Optional[JoystickDecoder] = None
         self.injector = KeyInjector(self.config.get("target_apps"))
@@ -782,6 +784,7 @@ class Hub:
         link = SerialLink(port, 115200, on_message=self._on_device_message, on_disconnect=self._on_link_lost)
         link.open()
         self.link = link
+        self._link_since = time.time()
         self._animator = Animator(
             send_fn=link.send, get_frame=self.current_frame, fps=12,
             power_budget_ma=self.config.get("power_budget_ma", 420),
@@ -794,7 +797,10 @@ class Hub:
             self._animator.stop()
             self._animator = None
         if self.link:
-            self.link.close()
+            try:
+                self.link.close()
+            except Exception:
+                pass                     # a port that is already gone: nothing left to close
             self.link = None
         self.device_info = {}
         self._broadcast({"t": "conn", "connected": False, "port": None})
@@ -1369,8 +1375,19 @@ class Hub:
                 if port:
                     try:
                         self.connect(port)
+                        self._link_auto = True
                     except Exception:
                         pass  # port busy/transient -- retried on the next tick
+            elif not self.device_info:
+                # connected but the pad never said hello: ask again, and if a port picked
+                # automatically still stays silent, it is not the pad -- let go and look again
+                silent = time.time() - self._link_since
+                try:
+                    self.link.send({"t": "ping"})
+                except Exception:
+                    pass
+                if self._link_auto and silent > 12:
+                    self.disconnect()
             time.sleep(3.0)
 
     # ---- LED preview, UI side: same frame as the one sent to the hardware,
@@ -1743,9 +1760,13 @@ class SoloBody(BaseModel):
 
 @app.get("/api/ports")
 def api_ports():
+    from agentpad.serial_link import is_bluetooth
+    best = find_port()
     out = []
     for p in list_ports.comports():
-        out.append({"device": p.device, "description": p.description or ""})
+        out.append({"device": p.device, "description": p.description or "",
+                    "bluetooth": is_bluetooth(p), "pad": p.device == best})
+    out.sort(key=lambda o: (not o["pad"], o["bluetooth"]))      # the pad first, Bluetooth last
     return out
 
 
@@ -1861,7 +1882,11 @@ def api_calibration_solo(body: SoloBody):
 
 @app.post("/api/connect")
 def api_connect(body: ConnectBody):
-    hub.connect(body.port)
+    try:
+        hub.connect(body.port)
+    except Exception as e:
+        return {"ok": False, "error": f"Could not open {body.port or 'the pad'}: {e}"}
+    hub._link_auto = False
     return {"ok": True, "port": hub.link.port if hub.link else None}
 
 

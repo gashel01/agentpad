@@ -148,10 +148,19 @@ async function refreshPorts() {
   for (const p of ports) {
     const o = document.createElement("option");
     o.value = p.device;
-    o.textContent = `${p.device} — ${p.description}`;
+    o.textContent = `${p.device} — ${p.description}` + (p.pad ? " (the pad)" : p.bluetooth ? " (Bluetooth, not the pad)" : "");
+    o.selected = state.connected ? p.device === state.port : !!p.pad;
     sel.appendChild(o);
   }
 }
+// picking another port while connected switches to it right away
+$("portSelect").addEventListener("change", async () => {
+  const port = $("portSelect").value;
+  if (!state.connected || !port || port === state.port) return;
+  const r = await api("/connect", { port });
+  if (!r.ok) toast(r.error || "Could not open that port");
+  await loadState();
+});
 
 function renderConnState() {
   $("topDot").className = "conn-dot" + (state.connected ? " on" : "");
@@ -944,10 +953,11 @@ $("previewBtn").addEventListener("click", async () => {
 $("connectBtn").addEventListener("click", async () => {
   try {
     if (state.connected) {
-      await api("/disconnect");
+      await api("/disconnect", {});
     } else {
       const port = $("portSelect").value || null;
-      await api("/connect", { port });
+      const r = await api("/connect", { port });
+      if (!r.ok) toast(r.error || "Could not open that port");
       connectWs();
     }
     await loadState();
