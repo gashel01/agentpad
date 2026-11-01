@@ -69,3 +69,14 @@ def test_headless_claude_runs_are_not_sessions():
     interactive = ["claude.exe", "--model", "sonnet"]
     assert any(a in AgentSessionManager._HEADLESS_ARGS for a in headless[1:])
     assert not any(a in AgentSessionManager._HEADLESS_ARGS for a in interactive[1:])
+
+
+def test_the_claude_desktop_app_is_not_a_session():
+    from agentpad.agent_sessions import AgentSessionManager as M
+    app = r"C:\Program Files\WindowsApps\Claude_4.4212.0.0_x64__pzs8sxrjxfjjc\app\Claude.exe"
+    assert M._is_desktop_app([app])
+    assert M._is_desktop_app([app, "--type=renderer", "--user-data-dir=C:/x"])
+    assert M._is_desktop_app(["/Applications/Claude.app/Contents/MacOS/Claude"])
+    cli = r"C:\Users\me\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe"
+    assert not M._is_desktop_app([cli])
+    assert not M._is_desktop_app([cli, "--model", "sonnet"])

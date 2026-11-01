@@ -132,6 +132,14 @@ class AgentSessionManager:
     # spawns several of these, never a real session.
     _INTERNAL_MARKERS = ("--bg-pty-host", "daemon", "--spawned-by", "--reply-on-resume")
     _HEADLESS_ARGS = ("-p", "--print")   # non-interactive runs (scripts, other apps): not a session
+    # the Claude desktop app is also called claude.exe (Electron: one main process + renderer, gpu,
+    # network... children). None of them is a Claude Code session.
+    _DESKTOP_APP_PATHS = ("\\windowsapps\\claude_", "\\anthropicclaude\\", "/claude.app/")
+
+    @classmethod
+    def _is_desktop_app(cls, cmdline: list) -> bool:
+        exe = (cmdline[0] if cmdline else "").lower()
+        return any(a.startswith("--type=") for a in cmdline[1:]) or any(k in exe for k in cls._DESKTOP_APP_PATHS)
 
     @staticmethod
     def _own_lineage() -> set[int]:
@@ -227,6 +235,8 @@ class AgentSessionManager:
                     continue
                 cmd_text = " ".join(cmdline).lower()
                 if any(marker in cmd_text for marker in self._INTERNAL_MARKERS):
+                    continue
+                if self._is_desktop_app(cmdline):
                     continue
                 if any(arg in self._HEADLESS_ARGS for arg in cmdline[1:]):
                     continue  # claude -p: driven by another program (no terminal, nothing to show)
